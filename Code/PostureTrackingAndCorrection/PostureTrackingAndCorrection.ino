@@ -40,12 +40,15 @@ int distance;
 
 String POSTURE_STATE="UNDEFINED?";
 
+const int DEBUG_DIST = 0;
+const int DEBUG_MODE = 1;//set to 0 when not debugging
+
 const int MIN_RANGE = 0;
 const int MID_RANGE= 20;
 const int LOW_RANGE= 5;
 const int MAX_RANGE= 40;
 
-const int POSTURE_BAD_SEC = 10; //how many samples per second to confirm bad posture
+const int POSTURE_BAD_SEC = 10; //how many samples*seconds to confirm bad posture
 //****************************************************************************//
 //-------------------------------tone variables-------------------------------//
 
@@ -105,8 +108,8 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7, outputOnlyFromShiftRegister(WRITE_CLOC
 void setupRTC_SD(){
     if (! rtc.begin()) {
     Serial.println("Couldn't find RTC");
-    Serial.flush();
-    abort();
+    //Serial.flush();
+    //abort();
   }
 
   if (! rtc.isrunning()) {
@@ -128,70 +131,13 @@ void setupRTC_SD(){
   // see if the card is present and can be initialized:
   if (!SD.begin(chipSelect)) {
     Serial.println("Card failed, or not present");
-    while (1);
+    //while (1);
   }
   Serial.println("card initialized.");
 }
 
-//***********************************************************************//
-//-----------------------------main functions----------------------------//
-
-
-void setup() {
-// set up the LCD's number of columns and rows, must be called.
-  lcd.begin(16, 2);
-  // Print a message to the LCD.
-  lcd.print("Posture Tracking");
-  setupRTC_SD();
-}
-
-void loop() {
-   DateTime now = rtc.now();
-  
-  // make a string for assembling the data to log:
-  String dataString = "";
-
-  distance = ultrasonic.read();
-  if (distance > MID_RANGE){
-    //you are standing away
-    pinMode(button, INPUT_PULLUP);
-    lcd.setCursor(0,0);
-    lcd.clear();
-    lcd.print("Not Sitting");
-    POSTURE_STATE = "NOT SEATED";
-  }
-  else if (distance >MIN_RANGE && distance <=LOW_RANGE)
-  {
-    //youre sitting correctly
-    lcd.setCursor(0,0);
-    lcd.clear();
-    lcd.print("Keep going!");
-    POSTURE_STATE = "GOOD POSTURE";
-  }
-  if(distance > LOW_RANGE && distance < MID_RANGE){
-    int badposturecount = 1;
-    for(int i = 0; i<POSTURE_BAD_SEC;i++){//samples the sensor 1 time per sec to check for bad posture
-      delay(1000);
-      distance = ultrasonic.read(); //re read
-      if (distance >= LOW_RANGE && distance<MID_RANGE){
-          badposturecount++;
-      }
-      else break;
-    } 
-    if (badposturecount == POSTURE_BAD_SEC){
-        
-        lcd.setCursor(0,0);
-        lcd.clear();
-        lcd.print("Please fix your");
-        lcd.setCursor(0,1);
-        lcd.print("posture!");
-        AlarmSound();// sounds the alarm
-
-        POSTURE_STATE = "BAD POSTURE";
-
-    }
-  }
-  dataString += String(now.timestamp(DateTime::TIMESTAMP_DATE));
+void DataLogging(String &dataString, DateTime &now){
+dataString += String(now.timestamp(DateTime::TIMESTAMP_DATE));
     dataString += String(',');
     dataString += String(now.timestamp(DateTime::TIMESTAMP_TIME));
     dataString += String(',');
@@ -211,6 +157,82 @@ void loop() {
   // if the file isn't open, pop up an error:
   else {
     Serial.println("error opening datalog.txt");}
+}
+//***********************************************************************//
+//-----------------------------main functions----------------------------//
+
+
+void setup() {
+// set up the LCD's number of columns and rows, must be called.
+  Serial.begin(9600);
+  lcd.begin(16, 2);
+  //setupRTC_SD();
+  // Print a message to the LCD.
+  pinMode(button, INPUT_PULLUP);
+  lcd.print("Tracking Begin");
   
-  delay(100);
+}
+
+void loop() {
+  //DateTime now = rtc.now();
+
+  // make a string for assembling the data to log:
+  String dataString = "";
+  if (!DEBUG_MODE)
+  distance = ultrasonic.read();
+  else distance = DEBUG_DIST;
+  if (distance > MID_RANGE){
+    //you are standing away
+
+    lcd.setCursor(0,0);
+    lcd.clear();
+    lcd.print("Not Sitting");
+    Serial.print("Not Sitting");
+    POSTURE_STATE = "NOT SEATED";
+  }
+  else if (distance >=MIN_RANGE && distance <=LOW_RANGE)
+  {
+    //youre sitting correctly
+    lcd.setCursor(0,0);
+    lcd.clear();
+    lcd.print("Keep going!");
+    Serial.print("Keep going!");
+    POSTURE_STATE = "GOOD POSTURE";
+  }
+  if(distance > LOW_RANGE && distance < MID_RANGE){
+    int badposturecount = 1;
+    for(int i = 0; i<POSTURE_BAD_SEC;i++){//samples the sensor 1 time per sec to check for bad posture
+      delay(1000);
+      if (!DEBUG_MODE)
+      distance = ultrasonic.read(); //re read
+      else distance = DEBUG_DIST;
+      
+      lcd.setCursor(0,0);
+      lcd.clear();
+      lcd.print("Alarm in...");
+
+      if (distance >= LOW_RANGE && distance<MID_RANGE){
+          badposturecount++;
+          lcd.setCursor(0,1);
+          lcd.print(badposturecount);
+      }
+      else break;
+    } 
+    if (badposturecount > POSTURE_BAD_SEC){
+        
+        lcd.setCursor(0,0);
+        lcd.clear();
+        lcd.print("Please fix your");
+        lcd.setCursor(0,1);
+        lcd.print("posture!");
+        AlarmSound();// sounds the alarm
+
+        POSTURE_STATE = "BAD POSTURE";
+
+    }
+  }
+  
+  //DataLogging(dataString,now);
+  
+  delay(1000);
 }
