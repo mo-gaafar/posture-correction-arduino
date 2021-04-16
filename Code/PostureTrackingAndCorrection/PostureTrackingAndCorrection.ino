@@ -37,9 +37,15 @@ const int chipSelect = 3;
 int tempo = 114;
 //distance reading here
 int distance;
-
+static int PCOUNTER = 0;//counts posture state in seconds
 String POSTURE_STATE="UNDEFINED?";
 
+<<<<<<< Updated upstream
+=======
+const int DEBUG_DIST = 8;
+const int DEBUG_MODE = 1;//set to 0 when not debugging
+
+>>>>>>> Stashed changes
 const int MIN_RANGE = 0;
 const int MID_RANGE= 20;
 const int LOW_RANGE= 5;
@@ -120,7 +126,6 @@ void setupRTC_SD(){
   }
 //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   // Open serial communications and wait for port to open:
-  Serial.begin(9600);
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
@@ -149,8 +154,14 @@ void loop() {
    DateTime now = rtc.now();
   
   // make a string for assembling the data to log:
+  
   String dataString = "";
+<<<<<<< Updated upstream
 
+=======
+  String LAST_POSTURE = POSTURE_STATE;
+  if (!DEBUG_MODE)
+>>>>>>> Stashed changes
   distance = ultrasonic.read();
   if (distance > MID_RANGE){
     //you are standing away
@@ -169,28 +180,41 @@ void loop() {
     POSTURE_STATE = "GOOD POSTURE";
   }
   if(distance > LOW_RANGE && distance < MID_RANGE){
-    int badposturecount = 1;
+    PCOUNTER = 1;
     for(int i = 0; i<POSTURE_BAD_SEC;i++){//samples the sensor 1 time per sec to check for bad posture
       delay(1000);
       distance = ultrasonic.read(); //re read
       if (distance >= LOW_RANGE && distance<MID_RANGE){
+<<<<<<< Updated upstream
           badposturecount++;
       }
       else break;
     } 
     if (badposturecount == POSTURE_BAD_SEC){
+=======
+          PCOUNTER++;
+          lcd.setCursor(0,1);
+          lcd.print(PCOUNTER);
+      }
+      else break;
+    } 
+    if (PCOUNTER > POSTURE_BAD_SEC){
+>>>>>>> Stashed changes
         
         lcd.setCursor(0,0);
         lcd.clear();
         lcd.print("Please fix your");
         lcd.setCursor(0,1);
         lcd.print("posture!");
+        int duration = millis();
         AlarmSound();// sounds the alarm
-
+        duration = millis() - duration; //calculating alarm duration in seconds
+        PCOUNTER =+ duration/1000;
         POSTURE_STATE = "BAD POSTURE";
 
     }
   }
+<<<<<<< Updated upstream
   dataString += String(now.timestamp(DateTime::TIMESTAMP_DATE));
     dataString += String(',');
     dataString += String(now.timestamp(DateTime::TIMESTAMP_TIME));
@@ -213,4 +237,20 @@ void loop() {
     Serial.println("error opening datalog.txt");}
   
   delay(100);
+=======
+  if (LAST_POSTURE == POSTURE_STATE){
+    lcd.setCursor(0,1);
+    PCOUNTER++;
+    lcd.print(PCOUNTER);
+    delay(1000);
+    //DataLogging(dataString,now);
+  }
+  else
+  {
+    PCOUNTER = 0;
+  }
+  
+  
+  delay(1000);
+>>>>>>> Stashed changes
 }
