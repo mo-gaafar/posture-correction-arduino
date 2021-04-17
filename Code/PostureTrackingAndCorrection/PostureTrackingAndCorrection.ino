@@ -21,12 +21,12 @@ RTC_DS1307 rtc;
 //-------------------------------pins-------------------------------------//
 
 Ultrasonic ultrasonic(12, 13); //trigger,echo
-#define WRITE_DATA_PIN 11
-#define WRITE_LATCH_PIN 10
-#define WRITE_CLOCK_PIN 9
+#define WRITE_DATA_PIN 10
+#define WRITE_LATCH_PIN 9
+#define WRITE_CLOCK_PIN 6
 const int button = 4;
 const int buzzer = 8;
-const int chipSelect = 3;
+const int chipSelect = 2;
 
 //************************************************************************//
 
@@ -39,8 +39,15 @@ int tempo = 114;
 int distance;
 static int PCOUNTER = 0;//counts posture state in seconds
 String POSTURE_STATE="UNDEFINED?";
+static bool SEATED = 0;
 
-const int DEBUG_DIST = 21;
+
+TimeSpan TIME_DIFF= 0;
+DateTime ALARM_TIME;
+DateTime TIME_DELAY = 10;
+bool ALARM_ACTIVE = 0;
+
+static int DEBUG_DIST = 5;
 const int DEBUG_MODE = 1;//set to 0 when not debugging
 
 const int MIN_RANGE = 0;
@@ -108,8 +115,8 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7, outputOnlyFromShiftRegister(WRITE_CLOC
 void setupRTC_SD(){
     if (! rtc.begin()) {
     Serial.println("Couldn't find RTC");
-    //Serial.flush();
-    //abort();
+    Serial.flush();
+    abort();
   }
 
   if (! rtc.isrunning()) {
@@ -144,7 +151,7 @@ dataString += String(now.timestamp(DateTime::TIMESTAMP_DATE));
 
   // open the file. note that only one file can be open at a time,
   // so you have to close this one before opening another.
-  File dataFile = SD.open("datalog7.txt", FILE_WRITE);
+  File dataFile = SD.open("test.txt", FILE_WRITE);
 
   // if the file is available, write to it:
   if (dataFile) {
@@ -155,7 +162,7 @@ dataString += String(now.timestamp(DateTime::TIMESTAMP_DATE));
   }
   // if the file isn't open, pop up an error:
   else {
-    Serial.println("error opening datalog.txt");}
+    Serial.println("error opening file.txt");}
 }
 //***********************************************************************//
 //-----------------------------main functions----------------------------//
@@ -165,16 +172,16 @@ void setup() {
 // set up the LCD's number of columns and rows, must be called.
   Serial.begin(9600);
   lcd.begin(16, 2);
-  //setupRTC_SD();
+  
   // Print a message to the LCD.
   pinMode(button, INPUT_PULLUP);
   lcd.print("Tracking Begin");
-  
+  setupRTC_SD();
 }
 
 void loop() {
-  //DateTime now = rtc.now();
-
+  DateTime loopstartnow = rtc.now();
+  bool SEATEDprev = SEATED;
   // make a string for assembling the data to log:
   String dataString = "";
 
@@ -184,21 +191,22 @@ void loop() {
   else distance = DEBUG_DIST;
   if (distance > MID_RANGE){
     //you are standing away
-
+    SEATED = false;
     lcd.setCursor(0,0);
     lcd.clear();
     lcd.print("Not Sitting");
-    Serial.print("Not Sitting");
+    //Serial.print("Not Sitting");
     POSTURE_STATE = "NOT SEATED";
     Serial.println(POSTURE_STATE);
   }
   else if (distance >=MIN_RANGE && distance <=LOW_RANGE)
   {
     //youre sitting correctly
+    SEATED = true;
     lcd.setCursor(0,0);
     lcd.clear();
     lcd.print("Keep going!");
-    Serial.print("Keep going!");
+    //Serial.print("Keep going!");
     POSTURE_STATE = "GOOD POSTURE";
     Serial.println(POSTURE_STATE);
   }
@@ -216,6 +224,7 @@ void loop() {
 
       if (distance >= LOW_RANGE && distance<MID_RANGE){
           PCOUNTER++;
+          SEATED = true;
           lcd.setCursor(0,1);
           lcd.print(PCOUNTER);
       }
@@ -228,27 +237,40 @@ void loop() {
         lcd.print("Please fix your");
         lcd.setCursor(0,1);
         lcd.print("posture!");
-        int duration = millis();
+        //int duration = millis();
         AlarmSound();// sounds the alarm
-        duration = millis() - duration; //calculating alarm duration in seconds
-        PCOUNTER =+ duration/1000;
+        //duration = millis() - duration; //calculating alarm duration in seconds
+        //PCOUNTER =+ duration/1000;
         POSTURE_STATE = "BAD POSTURE";
         Serial.println(POSTURE_STATE);
 
     }
   }
-  if (LAST_POSTURE == POSTURE_STATE){
-    lcd.setCursor(0,1);
-    PCOUNTER++;
-    lcd.print(PCOUNTER);
-    delay(1000);
-    //DataLogging(dataString,now);
+  if(SEATED){
+    if(ALARM_ACTIVE){
+      if(ALARM_TIME > rtc.now()){
+        lcd.setCursor(0,1);
+        lcd.print("Remaining: ");
+        lcd.setCursor(12,1);
+        TIME_DIFF = ALARM_TIME - rtc.now();
+        lcd.print(TIME_DIFF.seconds());
+      }
+      else{
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("Take a Break!");
+        AlarmSound();
+        ALARM_ACTIVE = 0; 
+        //DEBUG_DIST = 10;      
+      }
+    }
+    else{
+        ALARM_TIME = rtc.now()+TimeSpan(10);
+        ALARM_ACTIVE = 1;
+      }
   }
-  else
-  {
-    PCOUNTER = 0;
+  else{
+    ALARM_ACTIVE = 0;
   }
-  
-  
   delay(1000);
 }
