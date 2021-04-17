@@ -46,6 +46,7 @@ TimeSpan TIME_DIFF= 0;
 DateTime ALARM_TIME;
 DateTime TIME_DELAY = 10;
 bool ALARM_ACTIVE = 0;
+int BREAK_TIME = 10;
 
 static int DEBUG_DIST = 5;
 const int DEBUG_MODE = 1;//set to 0 when not debugging
@@ -220,12 +221,13 @@ void loop() {
       
       lcd.setCursor(0,0);
       lcd.clear();
-      lcd.print("Alarm in...");
+      lcd.print("Bad Posture!");
 
       if (distance >= LOW_RANGE && distance<MID_RANGE){
           PCOUNTER++;
           SEATED = true;
           lcd.setCursor(0,1);
+          lcd.print("Alarm..  ");
           lcd.print(PCOUNTER);
       }
       else break;
@@ -261,7 +263,14 @@ void loop() {
         lcd.print("Take a Break!");
         AlarmSound();
         ALARM_ACTIVE = 0; 
-        //DEBUG_DIST = 10;      
+        
+          
+          lcd.setCursor(0,1);
+          lcd.print("Come Back in");
+          lcd.setCursor(14,1);
+          lcd.print(BREAK_TIME);               
+          delay(1000*BREAK_TIME);
+        //DEBUG_DIST = 14;      
       }
     }
     else{
