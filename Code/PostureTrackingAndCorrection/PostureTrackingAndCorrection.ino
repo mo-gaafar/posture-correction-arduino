@@ -23,7 +23,7 @@ RTC_DS1307 rtc;
 Ultrasonic ultrasonic(12, 13); //trigger,echo
 #define WRITE_DATA_PIN 10
 #define WRITE_LATCH_PIN 9
-#define WRITE_CLOCK_PIN 6
+#define WRITE_CLOCK_PIN 5
 const int button = 4;
 const int buzzer = 8;
 const int chipSelect = 2;
